@@ -67,6 +67,51 @@ def hires_by_quarter_2021(conn):
 
     return pd.read_sql(query, conn)
 
+def departments_above_mean_2021(conn):
+    """
+    Devuelve una lista de los IDs, nombre del departamento y cantidad de empleados contratados de los departamentos
+    que superan la media de contrataciones en 2021
+    """
+
+    query = """
+        WITH hires_per_department AS (
+            SELECT
+                d.id, 
+                d.department, 
+                COUNT(*) AS hired
+            FROM
+                hired_employees h
+                JOIN
+                departments d
+                    ON
+                        h.department_id = d.id
+            WHERE
+                strftime('%Y', h.datetime) = '2021'
+            GROUP BY
+                d.id, d.department
+        ),
+        mean_hires AS (
+            SELECT
+                AVG(hired) AS mean_hired
+            FROM
+                hires_per_department
+        )
+        SELECT
+            id, 
+            department,
+            hired
+        FROM
+            hires_per_department hpd
+            JOIN
+            mean_hires mh
+        WHERE
+            hpd.hired > mh.mean_hired
+        ORDER BY
+            hpd.hired DESC;
+    """
+
+    return pd.read_sql(query, conn)
+
 
 def main():
 
@@ -116,9 +161,15 @@ def main():
     # seccion SQL
     # apago el maximo de filas a mostrar
     pd.set_option("display.max_rows", None)
+    print("Number of employees hired for each job and department in 2021 divided by quarter. The table must be ordered alphabetically by department and job.")
     df_quarterly = hires_by_quarter_2021(conn)
     print(df_quarterly)
 
+    print("\n\n")
+
+    print("List of ids, name and number of employees hired of each department that hired more employees than the mean of employees hired in 2021 for all the departments, ordered by the number of employees hired (descending).")
+    df_mean_hires = departments_above_mean_2021(conn)
+    print(df_mean_hires)
 
     # vuelvo a encender el maximo de filas a mostrar
     pd.reset_option("display.max_rows")
